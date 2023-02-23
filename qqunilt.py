@@ -1,3 +1,4 @@
+import re
 import attr
 from typing import Callable
 import json
@@ -43,7 +44,10 @@ def send_user_back(data:dict,message:str):
 def _handle_(data:dict):
     for i in _handlers:
         if i.call_type == data['post_type']:
-            if all([data[mem[0]] == mem[1] for mem in i.call_match.items()]):
+            if all([
+                bool(mem[1].match(data[mem[0]])) 
+                if isinstance(mem[1],re.Pattern) else data[mem[0]] == mem[1] 
+                for mem in i.call_match.items()]):
                 try:
                     if i.call_back(data) == False:
                         break

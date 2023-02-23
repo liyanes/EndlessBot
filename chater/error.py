@@ -53,5 +53,3 @@ class GenerateFail(BaseException):
     def __init__(self, conversation:Conversation,*args: object) -> None:
         super().__init__(*args)
         self.conversation = conversation
-
-

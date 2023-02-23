@@ -89,6 +89,9 @@ class ChatGPTConversation(Conversation):
                         elif data['detail'].startswith('Only one'):
                             # 请求只能有一次
                             raise OnBusy(self,prompt,data['detail'])
+                        elif data['detail'].startswith('Something'):
+                            # ChatGPT故障
+                            raise GenerateFail(self,data['detail'])
                         else:
                             raise BaseException(self,prompt,data['detail'])
 
@@ -162,6 +165,14 @@ class ChatGPTConversation(Conversation):
         )
         if res.status_code != 200:
             raise NetWorkException(res)
+
+    def get_history(self):
+        res = self._in_bot._session.get(
+            url = BASEURL + f'/api/conversation/{self._con_id}'
+        )
+        if res.status_code != 200:
+            raise NetWorkException(res)
+        return json.loads(res.text)
     
 class ChatGPTBot(Bot):
     '''ChatGPT机器人'''
