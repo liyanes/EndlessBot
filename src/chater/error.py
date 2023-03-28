@@ -1,4 +1,5 @@
 from .core import _ID,Conversation
+import requests
 class BaseException(Exception):
     '''ChatBot Base Execption'''
 
@@ -13,7 +14,6 @@ class IDNotFound(BaseException):
     def __init__(self, id:_ID,*args: object) -> None:
         super().__init__(*args)
         self.id = id
-
 
 class OnBusy(BaseException):
     '''机器人繁忙'''
@@ -50,6 +50,31 @@ class DeleteFailed(BaseException):
 
 class GenerateFail(BaseException):
     '''机器人生成失败'''
+    def __init__(self, conversation:Conversation,*args: object) -> None:
+        super().__init__(*args)
+        self.conversation = conversation
+
+class NetReturnError(BaseException):
+    '''网络返回错误'''
+    def __init__(self, conversation:Conversation,response:requests.Response,*args: object) -> None:
+        super().__init__(*args)
+        self.conversation = conversation
+        self.response = response
+
+class Timeout(BaseException):
+    '''超时'''
+    def __init__(self, conversation:Conversation,*args: object) -> None:
+        super().__init__(*args)
+        self.conversation = conversation
+
+class ProxyError(BaseException):
+    '''代理错误'''
+    def __init__(self, conversation:Conversation,*args: object) -> None:
+        super().__init__(*args)
+        self.conversation = conversation
+
+class ConnectionError(BaseException):
+    '''连接错误'''
     def __init__(self, conversation:Conversation,*args: object) -> None:
         super().__init__(*args)
         self.conversation = conversation
