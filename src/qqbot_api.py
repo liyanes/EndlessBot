@@ -13,7 +13,7 @@ if os.path.exists('.env'):
     load_dotenv(os.path.join(os.path.dirname(sys.argv[0]),'.env'))
 
 log = logging.getLogger(__name__)
-log.setLevel(level=logging.INFO)
+log.setLevel(level=logging.DEBUG)
 
 log_for = logging.Formatter('[%(asctime)s] %(levelname)s : %(message)s')
 
@@ -31,6 +31,9 @@ if os.environ.get('ENABLE_LOG') == '1':
     log.addHandler(fil)
 log.addHandler(col)
 
+log.debug('日志已启用')
+log.debug('环境变量已加载:' + '\n'.join([f'{name}:{value}' for name,value in os.environ.items()]))
+
 bot = chater.ChatConversation.Bot(
     'You are ChatGPT,a launage model developed by OpenAI.\n'
     'In this conversation, you will be playing the role of an AI assistant.\n'
@@ -43,6 +46,7 @@ if os.environ.get('PROXY'):
         'http':os.environ.get('PROXY'),
         'https':os.environ.get('PROXY')
     }
+    log.debug('代理已启用')
 
 log.info("机器人初始化完成")
 
@@ -323,7 +327,7 @@ def ask(data:Message):
         try:
             ret = con.completition(data['message'])
             data.send(ret['choices'][0]['message']['content'])
-            log.info(f"-> user {data['user_id']}" + ret['choices'][0]['message']['content'])
+            log.info(f"-> [user {data['user_id']}]" + ret['choices'][0]['message']['content'])
         except chater.error.NetReturnError as e:
             data.send('[error]API返回错误,消息体:' + e.response.text)
             log.error('\n'.join(traceback.format_exception(e)) + f'\n{e.response.text}')
@@ -352,11 +356,11 @@ def ask_group(data:Message):
     if not str(data['group_id']) in group_white_list:
         return False
     if bot_on:
-        con = bot.get_conversation(chater.ChatConversation.Group('group-' + str(data['group_id'])))
-        log.info(f'[group {data["group_id"]}]{data["message"]}')
+        con = bot.get_conversation(chater.ChatConversation.User('group-' + str(data['group_id'])))
+        log.info(f'-> [group {data["group_id"]}]{data["message"]}')
         try:
             ret = con.completition(msg[5:])
-            data.send(ret['choices'][0]['message']['content'])
+            data.send_group(f'[CQ:at,qq={data.user_id}]' + ret['choices'][0]['message']['content'])
             log.info(f"-> group {data['group_id']}" + ret['choices'][0]['message']['content'])
         except chater.error.NetReturnError as e:
             data.send('[error]API返回错误,消息体:' + e.response.text)

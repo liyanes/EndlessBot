@@ -126,7 +126,7 @@ def start_handler():
     try:
         th.serve_forever()
     except KeyboardInterrupt:
-        print("退出中...")
+        ...
 
 @attr.s(auto_attribs=True)
 class _SHandler:

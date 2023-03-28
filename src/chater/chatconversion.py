@@ -1,3 +1,4 @@
+import threading
 from typing import Any, Iterable
 import attr
 from . import error,core
@@ -79,12 +80,18 @@ class Conversation:
         self.api_key:str = ''
         # self.session = aiohttp.ClientSession('https://api.openai.com/')
         self.session:requests.Session = requests.session()
+        self._on_not_ask:threading.Event = threading.Event()
+        self._on_not_ask.set()
         if proxy:
             self.session.proxies.update(proxy)
     
     def completition(self,prompt:str,norecord:bool = False):
         tosend = self.spawn_param.to_dict()
         # Stream False
+        # 等待上一个回答完成
+        self._on_not_ask.wait()
+        self._on_not_ask.clear()
+
         self.session.headers['Content-Type'] = 'application/json'
         self.session.headers['Authorization'] = f'Bearer {self.api_key}'
         messages = self.records.generate()
@@ -98,13 +105,20 @@ class Conversation:
                 content = json.loads(res.content)
                 if not norecord:
                     self.records.add_record('assistant',content['choices'][0]['message']['content'])
+                self._on_not_ask.set()
                 return content
         except requests.exceptions.Timeout as e:
+            self._on_not_ask.set()
             raise error.Timeout(self,e)
         except requests.exceptions.ProxyError as e:
+            self._on_not_ask.set()
             raise error.ProxyError(self,e)
         except requests.exceptions.ConnectionError as e:
+            self._on_not_ask.set()
             raise error.ConnectionError(self,e)
+        except Exception as e:
+            self._on_not_ask.set()
+            raise e
 
 class Bot:
     def __init__(self,system_prompt:str = '',api_key:str = '',proxy:dict|None = None) -> None:
@@ -112,7 +126,10 @@ class Bot:
         self.system_prompt = system_prompt
         self.conversations:list[Conversation] = []
         self.default_param = SpawnParameter()
-        self.proxy = proxy or os.environ.get('http_proxy')
+        self.proxy = proxy or {
+            'http':os.environ.get('PROXY'),
+            'https':os.environ.get('PROXY')
+        }
 
     def find_conversation(self,user:User):
         for i in self.conversations:
@@ -125,7 +142,7 @@ class Bot:
         if src:
             self.conversations.remove(src)
         
-        newc = Conversation(user,self.system_prompt)
+        newc = Conversation(user,self.system_prompt,self.proxy)
         newc.api_key = self.api_key
         newc.spawn_param = self.default_param
 
