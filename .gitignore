@@ -10,6 +10,5 @@
 **dep_*
 
 # 数据文件
-src/white.list
-src/black.list
-src/group_white.list
+**.list
+
