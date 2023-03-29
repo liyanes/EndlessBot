@@ -66,6 +66,15 @@ class Message(dict):
         if res.status_code != 200:
             raise Exception("状态错误")
         
+    def enable_group(self):
+        res = requests.post(f'{UPLOAD_URL}/set_group_add_request',params={
+            'flag':self['flag'],
+            'approve':True,
+            'type':'invite'
+        })
+        if res.status_code != 200:
+            raise Exception("状态错误")
+        
     def delete_friend(self):
         res = requests.post(f'{UPLOAD_URL}/delete_friend',params={
             'user_id':self['user_id']
@@ -85,6 +94,15 @@ def enable_friend(flag:str):
     res = requests.post(f'{UPLOAD_URL}/set_friend_add_request',params={
         'flag':flag,
         'approve':True
+    })
+    if res.status_code != 200:
+        raise Exception("状态错误")
+    
+def enable_group(flag:str):
+    res = requests.post(f'{UPLOAD_URL}/set_group_add_request',params={
+        'flag':flag,
+        'approve':True,
+        'type':'invite'
     })
     if res.status_code != 200:
         raise Exception("状态错误")

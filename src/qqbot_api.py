@@ -263,6 +263,17 @@ def req_friend(data:Message):
     qqhandler.send(manager['user_id'],f'收到好友请求\n{str(data["user_id"])}\n{data["comment"]}')
     return False
 
+group_requests:list[Message] = []
+@qqhandler.on_request(request_type='group',)
+def req_group(data:Message):
+    group_requests.append(data)
+    qqhandler.send(manager['user_id'],f'收到群请求\n{str(data["group_id"])}\n{data["comment"]}')
+    if data['sub_type'] == 'invite':
+        if str(data['group_id']) in group_white_list:
+            data.enable_group()
+            qqhandler.send(manager['user_id'],f'已自动同意入群邀请')
+    return False
+
 @qqhandler.on_message(**manager,message=re.compile('^/friend(.*)$'))
 def cmd_friend(data:Message):
     if re.compile(r'/friend( .*|)$').match(data['message']) == None:
