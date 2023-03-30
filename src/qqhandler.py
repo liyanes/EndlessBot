@@ -2,7 +2,7 @@ from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer
 import json
 import re
 import attr
-from typing import Callable, overload,Iterable,Any
+from typing import Callable, Literal, overload,Iterable,Any
 import json
 import traceback
 import requests
@@ -44,22 +44,22 @@ messageHis = LimitList()
 
 class Message(dict):
     @property
-    def type(self):
+    def type(self) -> Literal['message','request','notice','meta_event']:
         return self['post_type']
     
     @property
-    def message_id(self):
+    def message_id(self) -> int:
         return self['message_id']
     
     @property
-    def message(self):
+    def message(self) -> str:
         return self['message']
     
     @property
-    def user_id(self):
+    def user_id(self) -> int:
         return self['user_id']
     
-    def send(self,message:str):
+    def send(self,message:str) -> int:
         if self.type == 'message':
             if self['message_type'] == 'private':
                 self._send_private(message)
@@ -92,14 +92,15 @@ class Message(dict):
         if res.status_code != 200:
             raise Exception("状态错误")
     
-    def accept(self):
+    def accept(self) -> int:
         if self.type == 'request':
             if self['request_type'] == 'friend':
                 self._enable_friend()
+                return self['user_id']
             elif self['request_type'] == 'group':
                 self._enable_group()
-        else:
-            raise Exception("不支持的消息类型")
+                return self['group_id']
+        raise Exception("不支持的消息类型")
 
     def _enable_friend(self):
         res = requests.post(f'{UPLOAD_URL}/set_friend_add_request',params={

@@ -333,14 +333,14 @@ def ask(data:Message):
         if str(data['user_id']) in black_list:
             data.send('[error]你无权限使用该机器人')
             return False
-        
+         
     if bot_on:
         con = bot.get_conversation(chater.ChatConversation.User('user-' + str(data['user_id'])))
-        log.info(f'[user {data["user_id"]}]{data["message"]}')
+        log.info(f'User[{data["user_id"]}]{data["message"]}')
         try:
             ret = con.completition(data['message'])
             data.send(ret['choices'][0]['message']['content'])
-            log.info(f"-> [user {data['user_id']}]" + ret['choices'][0]['message']['content'])
+            log.info(f"-> User[{data['user_id']}]" + ret['choices'][0]['message']['content'])
         except chater.error.NetReturnError as e:
             data.send('[error]API返回错误,消息体:' + e.response.text)
             log.error('\n'.join(traceback.format_exception(e)) + f'\n{e.response.text}')
@@ -361,75 +361,83 @@ def ask(data:Message):
             log.error('\n'.join(traceback.format_exception(e)))
     return False
 
-GroupMessageHistory:dict[int,qqhandler.LimitList[Message]] = {}
+class GroupHandler:
+    history:qqhandler.LimitList[Message]
+    def __init__(self) -> None:
+        self.history = qqhandler.LimitList(30)
+    
+    def __call__(self,data:Message) -> bool:
+        msg:str = data['message']
+        if not str(data['group_id']) in group_white_list:
+            return False
+        if not msg.startswith('chat '):
+            log.debug(f"Add Group[{data['group_id']}] History:" + data.message)
+            self.history.append(data)
+            return False
+        if bot_on:
+            con = bot.new_conversation(chater.ChatConversation.User('group-' + str(data['group_id'])))
+            log.info(f'Group[{data["group_id"]} User[{data.user_id}]]{data["message"]}')
+            def generate_message():
+                for i in self.history:
+                    if i.message.startswith('chat '):
+                        yield f'User[{i.user_id}] ask you:' + i.message[5:]
+                        continue
+                    if i.user_id == i['self_id']:
+                        yield f'You answer User[{i["to_user"]}]:' + i.message
+                        continue
+                    yield f'User[{i.user_id}]:' + i.message
+
+            send_back = lambda message:data.send(f"[CQ:reply,id={data['message_id']}]{message}")
+            
+            if msg != 'chat ':
+                to_ask = "The recent messages:\n" +\
+                    '\n'.join(generate_message()) + '\n' + \
+                    f'You need to answer the question asked by User[{data.user_id}]:\n' + \
+                    data.message[5:]
+            else:
+                to_ask = "The recent messages:\n" +\
+                    '\n'.join(generate_message()) + '\n' + \
+                    '\nPlease answer the last message in the language it use.'
+                
+            try:
+                log.debug("-> api:" + to_ask)
+                ret = con.completition(to_ask)
+                data.send(ret['choices'][0]['message']['content'])
+
+                log.debug("api return:" + str(ret))
+                log.info(f"-> Group[{data['group_id']} -> User[{data.user_id}]]" + ret['choices'][0]['message']['content'])
+                self.history.append(Message({
+                    'user_id':data['self_id'],
+                    'to_user':data.user_id,
+                    'message':ret['choices'][0]['message']['content'],
+                    'self_id':data['self_id']
+                }))
+            except chater.error.NetReturnError as e:
+                send_back('[error]API返回错误,消息体:' + e.response.text)
+                log.error('\n'.join(traceback.format_exception(e)) + f'\n{e.response.text}')
+            except chater.error.ProxyError as e:
+                send_back('[error]代理发送错误,请联系开发者')
+                log.error('\n'.join(traceback.format_exception(e)))
+            except chater.error.Timeout as e:
+                send_back('[error]请求超时,如果多次发生,请联系开发者')
+                log.error('\n'.join(traceback.format_exception(e)))
+            except chater.error.ConnectionError as e:
+                send_back('[error]网络连接错误,请再次尝试,如果多次失败,请尝试联系开发者')
+                log.error('\n'.join(traceback.format_exception(e)))
+            except chater.error.BaseException as e:
+                send_back('[error]返回错误,请联系开发者')
+                log.error('\n'.join(traceback.format_exception(e)))
+            except Exception as e:
+                send_back('[error]未知错误,请联系开发者')
+                log.error('\n'.join(traceback.format_exception(e)))
+        return True
+
+groups:dict[int,GroupHandler] = {}
 
 @qqhandler.on_message(message_type='group',sub_type='normal')
 def ask_group(data:Message):
-    msg=str(data['message'])
-    if not str(data['group_id']) in group_white_list:
-        return False
-    if not data['group_id'] in GroupMessageHistory:
-        GroupMessageHistory[data['group_id']] = qqhandler.LimitList(30)
-    if not msg.startswith('chat '):
-        log.debug(f"Add Group[{data['group_id']}] History:" + data.message)
-        GroupMessageHistory[data['group_id']].append(data)
-        return False
-    if bot_on:
-        con = bot.new_conversation(chater.ChatConversation.User('group-' + str(data['group_id'])))
-        log.info(f'[group {data["group_id"]}]{data["message"]}')
-        def generate_message():
-            for i in GroupMessageHistory[data['group_id']]:
-                if i.message.startswith('chat '):
-                    yield f'User[{i.user_id}] ask you:' + i.message[5:]
-                    continue
-                if i.user_id == i['self_id']:
-                    yield f'You answer User[{i["to_user"]}]:' + i.message
-                    continue
-                yield f'User[{i.user_id}]:' + i.message
-        if msg != 'chat ':
-            to_ask = "The recent messages:\n" +\
-                '\n'.join(generate_message()) + '\n' + \
-                f'You need to answer the question asked by User[{data.user_id}]:\n' + \
-                data.message[5:]
-        else:
-            to_ask = "The recent messages:\n" +\
-                '\n'.join(generate_message()) + '\n' + \
-                '\nPlease answer the last message in the language it use.'
-            
-        send_back = lambda message: data.send(f'[CQ:reply,id={data.message_id}]' + message)
-
-        try:
-            log.debug("-> api:" + to_ask)
-            ret = con.completition(to_ask)
-            # data.send_group(f'[CQ:at,qq={data.user_id}]' + ret['choices'][0]['message']['content'])
-            send_back(ret['choices'][0]['message']['content'])
-
-            log.debug("api return:" + str(ret))
-            log.info(f"-> group {data['group_id']}:" + ret['choices'][0]['message']['content'])
-
-            GroupMessageHistory[data['group_id']].append(Message({
-                'user_id':data['self_id'],
-                'to_user':data.user_id,
-                'message':ret['choices'][0]['message']['content'],
-                'self_id':data['self_id']
-            }))
-        except chater.error.NetReturnError as e:
-            send_back('[error]API返回错误,消息体:' + e.response.text)
-            log.error('\n'.join(traceback.format_exception(e)) + f'\n{e.response.text}')
-        except chater.error.ProxyError as e:
-            send_back('[error]代理发送错误,请联系开发者')
-            log.error('\n'.join(traceback.format_exception(e)))
-        except chater.error.Timeout as e:
-            send_back('[error]请求超时,如果多次发生,请联系开发者')
-            log.error('\n'.join(traceback.format_exception(e)))
-        except chater.error.ConnectionError as e:
-            send_back('[error]网络连接错误,请再次尝试,如果多次失败,请尝试联系开发者')
-            log.error('\n'.join(traceback.format_exception(e)))
-        except chater.error.BaseException as e:
-            send_back('[error]返回错误,请联系开发者')
-            log.error('\n'.join(traceback.format_exception(e)))
-        except Exception as e:
-            send_back('[error]未知错误,请联系开发者')
-            log.error('\n'.join(traceback.format_exception(e)))
+    if not data['group_id'] in groups:
+        groups[data['group_id']] = GroupHandler()
+    return groups[data['group_id']](data)
 
 qqhandler.start_handler()
