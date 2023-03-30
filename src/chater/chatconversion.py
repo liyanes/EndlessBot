@@ -6,11 +6,9 @@ import json
 import requests
 import os
 
-# 可选API Key:pk-TNkDYMHpJKKuSfiAWJlUCKQSnKluoZxvLGKRPnPzxCDPdVxs
-
 class Records:
     '''对话记录'''
-    def __init__(self,auto_limit:int = 10) -> None:
+    def __init__(self,auto_limit:int = 20) -> None:
         self._records:list[tuple(str,str)] = []
         '''对话记录,前一个是role,后一个是content'''
         self.system_prompt:str = ""

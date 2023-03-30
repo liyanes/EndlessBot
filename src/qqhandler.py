@@ -2,7 +2,7 @@ from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer
 import json
 import re
 import attr
-from typing import Callable
+from typing import Callable, overload,Iterable,Any
 import json
 import traceback
 import requests
@@ -12,8 +12,32 @@ RECEIVE_PORT = 5701
 UPLOAD_URL = 'http://localhost:5700'
 
 class LimitList(list):
+
+    @overload
+    def __init__(self, limit_len: int = 200) -> None:
+        ...
+
+    @overload
+    def __init__(self, __iterable: Iterable[Any], limit_len: int = 200) -> None:
+        ...
+
+    def __init__(self, *args, **kwargs):
+        if 'limit_len' in kwargs:
+            self.limit_len = kwargs['limit_len']
+            del kwargs['limit_len']
+        else:
+            if len(args) >= 1:
+                if isinstance(args[0], int):
+                    self.limit_len = args[0]
+                    args = args[1:]
+                else:
+                    self.limit_len = 200
+            else:
+                self.limit_len = 200
+        super().__init__(*args, **kwargs)
+
     def append(self, __object) -> None:
-        if len(self) >= 200:self.pop(0)
+        if len(self) >= self.limit_len:self.pop(0)
         return super().append(__object)
 
 messageHis = LimitList()
@@ -36,6 +60,16 @@ class Message(dict):
         return self['user_id']
     
     def send(self,message:str):
+        if self.type == 'message':
+            if self['message_type'] == 'private':
+                self._send_private(message)
+                return self['user_id']
+            elif self['message_type'] == 'group':
+                self._send_group(message)
+                return self['group_id']
+        raise Exception("不支持的消息类型")
+    
+    def _send_private(self,message:str):
         res = requests.post(f"{UPLOAD_URL}/send_private_msg",params={
             'user_id':self['user_id'],
             'message':message
@@ -43,7 +77,7 @@ class Message(dict):
         if res.status_code != 200:
             raise Exception("状态错误")
         
-    def send_group(self,message:str):
+    def _send_group(self,message:str):
         res = requests.post(f"{UPLOAD_URL}/send_group_msg",params={
             'group_id':self['group_id'],
             'message':message
@@ -57,8 +91,17 @@ class Message(dict):
         })
         if res.status_code != 200:
             raise Exception("状态错误")
-        
-    def enable_friend(self):
+    
+    def accept(self):
+        if self.type == 'request':
+            if self['request_type'] == 'friend':
+                self._enable_friend()
+            elif self['request_type'] == 'group':
+                self._enable_group()
+        else:
+            raise Exception("不支持的消息类型")
+
+    def _enable_friend(self):
         res = requests.post(f'{UPLOAD_URL}/set_friend_add_request',params={
             'flag':self['flag'],
             'approve':True
@@ -66,7 +109,7 @@ class Message(dict):
         if res.status_code != 200:
             raise Exception("状态错误")
         
-    def enable_group(self):
+    def _enable_group(self):
         res = requests.post(f'{UPLOAD_URL}/set_group_add_request',params={
             'flag':self['flag'],
             'approve':True,
