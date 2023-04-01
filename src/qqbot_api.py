@@ -387,7 +387,7 @@ class GroupHandler:
                         continue
                     yield f'User[{i.user_id}]:' + i.message
 
-            send_back = lambda message:data.send(f"[CQ:reply,id={data['message_id']}]{message}")
+            send_back = lambda message:data.send(f"[CQ:reply,id={data.message_id}]{message}")
             
             if msg != 'chat ':
                 to_ask = "The recent messages:\n" +\
@@ -397,7 +397,7 @@ class GroupHandler:
             else:
                 to_ask = "The recent messages:\n" +\
                     '\n'.join(generate_message()) + '\n' + \
-                    '\nPlease answer the last message in the language it use.'
+                    '\nPlease answer the last message in the language it requires or uses.'
                 
             try:
                 log.debug("-> api:" + to_ask)

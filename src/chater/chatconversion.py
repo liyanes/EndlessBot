@@ -8,7 +8,7 @@ import os
 
 class Records:
     '''对话记录'''
-    def __init__(self,auto_limit:int = 20) -> None:
+    def __init__(self,auto_limit:int = 10) -> None:
         self._records:list[tuple(str,str)] = []
         '''对话记录,前一个是role,后一个是content'''
         self.system_prompt:str = ""
@@ -17,6 +17,12 @@ class Records:
     def add_record(self,role:str,content:str):
         self._records.append((role,content))
         if len(self._records) > self._limit:
+            self._records.pop(0)
+        alllen = sum([len(i[1]) for i in self._records])
+        if alllen >= 4096 - 200:
+            if len(self._records) == 1:
+                self._records[0][1] = self._records[0][1][len(self._records[0][1]) - 3896:]
+                return
             self._records.pop(0)
 
     def generate(self):
