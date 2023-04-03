@@ -8,23 +8,29 @@ import os
 
 class Records:
     '''对话记录'''
-    def __init__(self,auto_limit:int = 10) -> None:
+    def __init__(self,auto_limit:int = 20) -> None:
         self._records:list[tuple(str,str)] = []
         '''对话记录,前一个是role,后一个是content'''
         self.system_prompt:str = ""
         self._limit = auto_limit
+        self.max_input_tokens = 2048 * 3 / 2
     
     def add_record(self,role:str,content:str):
         self._records.append((role,content))
         if len(self._records) > self._limit:
             self._records.pop(0)
-        alllen = sum([len(i[1]) for i in self._records])
-        if alllen >= 4096 - 200:
-            if len(self._records) == 1:
-                self._records[0][1] = self._records[0][1][len(self._records[0][1]) - 3896:]
-                return
-            self._records.pop(0)
-
+        self.slim_tokens(self.max_input_tokens)
+    
+    def slim_tokens(self,tokens:int):
+        '''截断tokens'''
+        cur_len = 0
+        for i in range(len(self._records)-1,-1,-1):
+            cur_len += len(self._records[i][1])
+            if cur_len > tokens:
+                self._records = self._records[i:]
+                self._records[1] = self._records[0][1][cur_len-tokens:]
+                break
+        
     def generate(self):
         return [
             {'role':'system','content':self.system_prompt},
