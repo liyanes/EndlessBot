@@ -28,7 +28,7 @@ class Records:
             cur_len += len(self._records[i][1])
             if cur_len > tokens:
                 self._records = self._records[i:]
-                self._records[1] = self._records[0][1][cur_len-tokens:]
+                self._records[0][1] = self._records[0][1][cur_len-tokens:]
                 break
         
     def generate(self):
