@@ -13,7 +13,7 @@ class Records:
         '''对话记录,前一个是role,后一个是content'''
         self.system_prompt:str = ""
         self._limit = auto_limit
-        self.max_input_tokens = 2048 * 3 / 2
+        self.max_input_tokens:int = int(2048 * 3 / 2)
     
     def add_record(self,role:str,content:str):
         self._records.append((role,content))
@@ -28,7 +28,8 @@ class Records:
             cur_len += len(self._records[i][1])
             if cur_len > tokens:
                 self._records = self._records[i:]
-                self._records[0][1] = self._records[0][1][cur_len-tokens:]
+                spl = self._records[0][1][cur_len - tokens:]
+                self._records[0] = (self._records[0][0],spl)
                 break
         
     def generate(self):
