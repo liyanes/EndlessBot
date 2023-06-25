@@ -392,12 +392,12 @@ class GroupHandler:
             if msg != 'chat ':
                 to_ask = "The recent messages:\n" +\
                     '\n'.join(generate_message()) + '\n' + \
-                    f'You need to answer the question asked by User[{data.user_id}]:\n' + \
-                    data.message[5:]
+                    f'User[{data.user_id}] Ask:' + \
+                    data.message[5:] + '\nReply in Chinese unless they ask you reply in English\nYou:'
             else:
                 to_ask = "The recent messages:\n" +\
                     '\n'.join(generate_message()) + '\n' + \
-                    '\nPlease answer the last message in the language it requires or uses.'
+                    '\nReply in Chinese unless they ask you reply in English\nYou:'
                 
             try:
                 log.debug("-> api:" + to_ask)
